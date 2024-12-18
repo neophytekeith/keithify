@@ -3,10 +3,6 @@ import yt_dlp
 import streamlit as st
 import subprocess
 
-# Set Streamlit options to fix the port binding
-st.set_option('server.address', '0.0.0.0')  # Bind to all network interfaces
-st.set_option('server.port', 8501)  # Or another port if 8501 is in use
-
 # Function to clear temporary files
 def clear_temp_files():
     download_dir = "/tmp"  # Streamlit Cloud uses /tmp for temporary files
