@@ -1,55 +1,36 @@
 import requests
-import time
 
-# YouTube video URL and format choice
-video_url = "https://www.youtube.com/watch?v=zyG9Nh_PH38"  # Replace with actual URL
-quality = "high"  # or low, medium, etc.
+# Apify API URL for the YouTube video and MP3 downloader actor
+url = "https://api.apify.com/v2/acts/easyapi~youtube-video-and-mp3-downloader/run-sync-get-dataset-items"
 
-# API URL and headers
-url = "https://youtube-to-mp315.p.rapidapi.com/download"
-querystring = {"url": video_url, "format": "mp3"}
-headers = {
-    "x-rapidapi-key": "3d094d7278msh8e5073db331294cp165831jsn1adf94629802",  # Replace with your API key
-    "x-rapidapi-host": "youtube-to-mp315.p.rapidapi.com",
-    "Content-Type": "application/json"
+# Define the query parameters (you can change the video URL here)
+querystring = {
+    "token": "apify_api_AWbTlHovmyHtiHrhFy28LRtVHzRzP60pHwiq",  # Replace with your Apify API token
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",  # Replace with your YouTube video URL
 }
 
-# Start the download request
-response = requests.post(url, headers=headers, params=querystring)
+# Sending GET request to the Apify API endpoint
+response = requests.get(url, params=querystring)
 
-# Check if the response was successful
+# Check if the response is successful (status code 200)
 if response.status_code == 200:
+    # Parse the JSON response
     data = response.json()
-    status = data.get('status')
-
-    if status == "CONVERTING":
-        print("The file is currently being converted. Please wait...")
-
-        # Implement a check to repeatedly request the status until the file is ready for download
-        while status == "CONVERTING":
-            # You may want to add a delay to avoid overwhelming the API with requests
-            time.sleep(5)  # Wait 5 seconds before checking again
-
-            # Re-query the status endpoint to get updated information
-            status_url = f"https://youtube-to-mp315.p.rapidapi.com/status/{data['id']}"
-            status_response = requests.get(status_url, headers=headers)
-            
-            if status_response.status_code == 200:
-                status_data = status_response.json()
-                status = status_data.get('status')
-                print(f"Current status: {status}")
-            else:
-                print("Error fetching status information.")
-                break
-
-        # Once the status is no longer "CONVERTING", check if the file is available
-        if status == "AVAILABLE":
-            download_url = data['downloadUrl']
-            print(f"The MP3 file is ready for download! Download it from: {download_url}")
-        else:
-            print("Error: Conversion failed or timed out.")
-
+    
+    # Check if the 'data' field is in the response
+    if 'data' in data:
+        # Iterate through each item in the 'data' list
+        for item in data['data']:
+            # Extract and print the relevant details
+            title = item.get('title', 'No title available')
+            download_url = item.get('downloadUrl', 'No download URL available')
+            status = item.get('status', 'Status not available')
+            print(f"Downloading {title} as MP3. Please wait...")
+            print(f"Title: {title}")
+            print(f"Download URL: {download_url}")
+            print(f"Status: {status}")
     else:
-        print(f"Error: {status}. File is not being converted.")
+        print("No data found in the response.")
 else:
-    print(f"Error: Failed to initiate download. HTTP Status Code: {response.status_code}")
+    print(f"Error: {response.status_code}")
+    print(response.text)
