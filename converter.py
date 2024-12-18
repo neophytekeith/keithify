@@ -21,18 +21,17 @@ def download_and_convert_to_mp3(url):
     try:
         clear_temp_files()
 
-        # Combine custom User-Agent with cookies from the browser
+        # Set up yt-dlp options without cookies
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': os.path.join(download_dir, 'temp_audio.%(ext)s'),
             'quiet': True,
             'extractaudio': True,
-            'audioquality': 0,
+            'audioquality': 0,  # Ensure best quality audio
             'noplaylist': True,
             'headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             },
-            'cookiesfrombrowser': True,  # This will use cookies from your browser
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -50,9 +49,9 @@ def download_and_convert_to_mp3(url):
             st.error(f"Error: The downloaded file {audio_file} was not found.")
             return
 
-        # Convert to MP3
+        # Convert to MP3 (without re-encoding, keeping the best bitrate)
         output_mp3 = os.path.join(download_dir, f'{video_title}.mp3')
-        command = ['ffmpeg', '-i', audio_file, '-vn', '-b:a', '320k', output_mp3]
+        command = ['ffmpeg', '-i', audio_file, '-vn', '-acodec', 'copy', output_mp3]
         subprocess.run(command, check=True)
 
         # Display success message and audio player
