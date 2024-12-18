@@ -4,7 +4,7 @@ import re
 
 # Set your API key and host URL
 API_KEY = "d90a09a015msh12f69eb58ce9364p149b89jsnd92118bd82d3"  # Replace with your actual RapidAPI key
-API_HOST = "youtube-mp3-download3.p.rapidapi.com"
+API_HOST = "youtube-mp36.p.rapidapi.com"
 
 # Function to extract YouTube video ID from the URL
 def extract_video_id(url):
@@ -13,22 +13,26 @@ def extract_video_id(url):
     if "youtu.be" in url:
         video_id = re.search(r"youtu\.be/([a-zA-Z0-9_-]+)", url)
     elif "youtube.com" in url:
-        video_id = re.search(r"[?&]v=([a-zA-Z0-9_-]+)", url)
+        video_id = re.search(r"[?&]v=([a-zA0-9_-]+)", url)
     return video_id.group(1) if video_id else None
 
 # Function to convert video to MP3 using external API
 def convert_to_mp3(video_url):
-    api_url = f"https://youtube-mp3-download3.p.rapidapi.com/downloads/convert_audio"
+    api_url = "https://youtube-mp36.p.rapidapi.com/dl"
     headers = {
         "x-rapidapi-key": API_KEY,
         "x-rapidapi-host": API_HOST
     }
-    params = {
-        'url': video_url,
-        'format': 'mp3'
-    }
+    # Extract the video ID from the URL
+    video_id = extract_video_id(video_url)
+    if not video_id:
+        return None, "Invalid YouTube URL"
+
+    # Set the query string with the extracted video ID
+    querystring = {"id": video_id}
+    
     try:
-        response = requests.get(api_url, headers=headers, params=params)
+        response = requests.get(api_url, headers=headers, params=querystring)
         if response.status_code == 200:
             data = response.json()
             if data.get('status') == "ok":
@@ -47,21 +51,14 @@ url = st.text_input("Enter YouTube URL:")
 
 if st.button("Convert to MP3"):
     if url:
-        # Extract the video ID from the URL
-        video_id = extract_video_id(url)
-        if video_id:
-            # Construct full video URL
-            video_url = f"https://www.youtube.com/watch?v={video_id}"
-            # Call the external API to convert video to MP3
-            song_title, download_link = convert_to_mp3(video_url)
-            if song_title:
-                st.success(f"Conversion successful! You can download the MP3 below.")
-                st.write(f"Song Title: {song_title}")
-                st.markdown(f"[Download MP3]({download_link})")
-            else:
-                st.error(f"Error: {download_link}")
+        # Call the external API to convert video to MP3
+        song_title, download_link = convert_to_mp3(url)
+        if song_title:
+            st.success(f"Conversion successful! You can download the MP3 below.")
+            st.write(f"Song Title: {song_title}")
+            st.markdown(f"[Download MP3]({download_link})")
         else:
-            st.error("Invalid YouTube URL. Please enter a valid URL.")
+            st.error(f"Error: {download_link}")
     else:
         st.warning("Please enter a valid YouTube URL.")
 
