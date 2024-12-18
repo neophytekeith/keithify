@@ -1,120 +1,55 @@
-import streamlit as st
 import requests
-import re
+import time
 
-# Define the API keys and URLs for the three endpoints
-API_KEY = "3d094d7278msh8e5073db331294cp165831jsn1adf94629802"
-API_HOST = "youtube-to-mp315.p.rapidapi.com"
+# YouTube video URL and format choice
+video_url = "https://www.youtube.com/watch?v=zyG9Nh_PH38"  # Replace with actual URL
+quality = "high"  # or low, medium, etc.
 
-# Extract the YouTube video ID from the URL
-def extract_video_id(url):
-    video_id = None
-    if "youtu.be" in url:
-        video_id = re.search(r"youtu\.be/([a-zA-Z0-9_-]+)", url)
-    elif "youtube.com" in url:
-        video_id = re.search(r"[?&]v=([a-zA-Z0-9_-]+)", url)
-    return video_id.group(1) if video_id else None
+# API URL and headers
+url = "https://youtube-to-mp315.p.rapidapi.com/download"
+querystring = {"url": video_url, "format": "mp3"}
+headers = {
+    "x-rapidapi-key": "3d094d7278msh8e5073db331294cp165831jsn1adf94629802",  # Replace with your API key
+    "x-rapidapi-host": "youtube-to-mp315.p.rapidapi.com",
+    "Content-Type": "application/json"
+}
 
-# Function to fetch video title using the title endpoint
-def get_video_title(video_id):
-    url = f"https://youtube-to-mp315.p.rapidapi.com/title"
-    querystring = {"url": f"https://www.youtube.com/watch?v={video_id}"}
-    headers = {
-        "x-rapidapi-key": API_KEY,
-        "x-rapidapi-host": API_HOST
-    }
-    try:
-        response = requests.get(url, headers=headers, params=querystring)
-        if response.status_code == 200:
-            data = response.json()
-            return data.get("title", "No title available")
-        else:
-            return None
-    except Exception as e:
-        return None
+# Start the download request
+response = requests.post(url, headers=headers, params=querystring)
 
-# Function to check the conversion status
-def check_conversion_status(conversion_id):
-    url = f"https://youtube-to-mp315.p.rapidapi.com/status/{conversion_id}"
-    headers = {
-        "x-rapidapi-key": API_KEY,
-        "x-rapidapi-host": API_HOST
-    }
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code == 200:
-            data = response.json()
-            status = data.get("status", "Unknown status")
-            download_url = data.get("downloadUrl", None)
-            if status == "AVAILABLE" and download_url:
-                return status, download_url
+# Check if the response was successful
+if response.status_code == 200:
+    data = response.json()
+    status = data.get('status')
+
+    if status == "CONVERTING":
+        print("The file is currently being converted. Please wait...")
+
+        # Implement a check to repeatedly request the status until the file is ready for download
+        while status == "CONVERTING":
+            # You may want to add a delay to avoid overwhelming the API with requests
+            time.sleep(5)  # Wait 5 seconds before checking again
+
+            # Re-query the status endpoint to get updated information
+            status_url = f"https://youtube-to-mp315.p.rapidapi.com/status/{data['id']}"
+            status_response = requests.get(status_url, headers=headers)
+            
+            if status_response.status_code == 200:
+                status_data = status_response.json()
+                status = status_data.get('status')
+                print(f"Current status: {status}")
             else:
-                return status, None
+                print("Error fetching status information.")
+                break
+
+        # Once the status is no longer "CONVERTING", check if the file is available
+        if status == "AVAILABLE":
+            download_url = data['downloadUrl']
+            print(f"The MP3 file is ready for download! Download it from: {download_url}")
         else:
-            return None, None
-    except Exception as e:
-        return None, None
+            print("Error: Conversion failed or timed out.")
 
-# Function to download the MP3
-def download_mp3(video_id):
-    url = "https://youtube-to-mp315.p.rapidapi.com.download"
-    querystring = {"url": f"https://www.youtube.com/watch?v={video_id}", "format": "mp3"}
-    payload = {}
-    headers = {
-        "x-rapidapi-key": API_KEY,
-        "x-rapidapi-host": API_HOST,
-        "Content-Type": "application/json"
-    }
-    try:
-        response = requests.post(url, json=payload, headers=headers, params=querystring)
-        if response.status_code == 200:
-            data = response.json()
-            conversion_id = data.get("id", None)
-            if conversion_id:
-                return conversion_id
-            else:
-                return None
-        else:
-            return None
-    except Exception as e:
-        return None
-
-# Streamlit UI
-st.title("YouTube to MP3 Converter")
-
-url = st.text_input("Enter YouTube URL:")
-
-if st.button("Get Video Title"):
-    if url:
-        video_id = extract_video_id(url)
-        if video_id:
-            title = get_video_title(video_id)
-            if title:
-                st.success(f"Video Title: {title}")
-            else:
-                st.error("Error: Could not fetch the title.")
-        else:
-            st.error("Invalid YouTube URL. Please enter a valid URL.")
     else:
-        st.warning("Please enter a YouTube URL.")
-
-if st.button("Download MP3"):
-    if url:
-        video_id = extract_video_id(url)
-        if video_id:
-            # First, initiate the download process
-            conversion_id = download_mp3(video_id)
-            if conversion_id:
-                # Check the conversion status
-                status, download_url = check_conversion_status(conversion_id)
-                if status == "AVAILABLE" and download_url:
-                    st.success("Download MP3:")
-                    st.markdown(f"[Download MP3]({download_url})")
-                else:
-                    st.error(f"Conversion Status: {status}")
-            else:
-                st.error("Error: Could not initiate the download process.")
-        else:
-            st.error("Invalid YouTube URL. Please enter a valid URL.")
-    else:
-        st.warning("Please enter a YouTube URL.")
+        print(f"Error: {status}. File is not being converted.")
+else:
+    print(f"Error: Failed to initiate download. HTTP Status Code: {response.status_code}")
