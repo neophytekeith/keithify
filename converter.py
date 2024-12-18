@@ -18,31 +18,34 @@ def extract_video_id(url):
 
 # Function to convert video to MP3 using external API
 def convert_to_mp3(video_url):
+    video_id = extract_video_id(video_url)
+    
+    if not video_id:
+        return None, "Invalid YouTube URL."
+
     api_url = "https://youtube-mp36.p.rapidapi.com/dl"
+    querystring = {"id": video_id}
     headers = {
         "x-rapidapi-key": API_KEY,
-        "x-rapidapi-host": API_HOST
+        "x-rapidapi-host": API_HOST,
+        "accept": "application/json"
     }
-    # Extract the video ID from the URL
-    video_id = extract_video_id(video_url)
-    if not video_id:
-        return None, "Invalid YouTube URL"
 
-    # Set the query string with the extracted video ID
-    querystring = {"id": video_id}
-    
     try:
         response = requests.get(api_url, headers=headers, params=querystring)
+        
         if response.status_code == 200:
             data = response.json()
-            if data.get('status') == "ok":
-                return data['title'], data['link']
+            # Check if the response status is 'ok'
+            if data.get("status") == "ok":
+                return data.get("title"), data.get("link")
             else:
-                return None, data.get('msg', 'Unknown error occurred.')
+                return None, data.get("msg", "Unknown error occurred.")
         else:
             return None, f"HTTP Error: {response.status_code}"
+        
     except Exception as e:
-        return None, f"Error: {str(e)}"
+        return None, f"Error occurred: {e}"
 
 # Streamlit UI to input YouTube URL and start the process
 st.title("YouTube to MP3 Converter")
