@@ -2,96 +2,54 @@ import streamlit as st
 import requests
 import re
 
-# Set your RapidAPI credentials
-API_KEY = "3d094d7278msh8e5073db331294cp165831jsn1adf94629802"  # Replace with your actual RapidAPI key
-API_HOST = "youtube-mp3-audio-video-downloader.p.rapidapi.com"
+# Set your API key and host URL for Vevioz API
+API_BASE_URL = "https://api.vevioz.com/@api/button/mp3"  # This endpoint is for MP3 conversion
 
 # Function to extract YouTube video ID from the URL
 def extract_video_id(url):
+    video_id = None
     if "youtu.be" in url:
         video_id = re.search(r"youtu\.be/([a-zA-Z0-9_-]+)", url)
     elif "youtube.com" in url:
         video_id = re.search(r"[?&]v=([a-zA-Z0-9_-]+)", url)
-    else:
-        video_id = None
     return video_id.group(1) if video_id else None
 
-# Function to fetch video title
-def fetch_video_title(video_id):
-    url = f"https://youtube-mp3-audio-video-downloader.p.rapidapi.com/video-info/{video_id}"
-    headers = {
-        "x-rapidapi-key": API_KEY,
-        "x-rapidapi-host": API_HOST
-    }
+# Function to get the conversion link
+def get_conversion_link(video_id):
+    url = f"https://api.vevioz.com/@api/button/mp3/{video_id}"
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url)
         if response.status_code == 200:
+            # Assuming the response is the mp3 download link
             data = response.json()
-            return data.get("title", "Unknown Title")
+            return data['link']
         else:
             return None
     except Exception as e:
         return None
 
-# Function to download audio
-def download_audio(video_id):
-    url = f"https://youtube-mp3-audio-video-downloader.p.rapidapi.com/download-mp3/{video_id}"
-    querystring = {"quality": "high"}
-    headers = {
-        "x-rapidapi-key": API_KEY,
-        "x-rapidapi-host": API_HOST
-    }
-    try:
-        response = requests.get(url, headers=headers, params=querystring, stream=True)
-        if response.status_code == 200:
-            # Extract file name from the response headers
-            file_name = response.headers.get("Content-Disposition", "audio.mp3").split("filename=")[-1].strip('"')
-            with open(file_name, "wb") as f:
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk:
-                        f.write(chunk)
-            return file_name, None
-        elif response.status_code == 404:
-            return None, "Error: Resource not found (404). Check the video ID or endpoint."
-        else:
-            return None, f"HTTP Error: {response.status_code}"
-    except Exception as e:
-        return None, f"Request Failed: {e}"
-
 # Streamlit UI to input YouTube URL and start the process
-st.title("YouTube to MP3 Converter")
+st.title("YouTube to MP3/MP4 Converter")
 
 url = st.text_input("Enter YouTube URL:")
 
 if st.button("Convert to MP3"):
     if url:
+        # Extract the video ID from the URL
         video_id = extract_video_id(url)
         if video_id:
-            # Fetch video title
-            video_title = fetch_video_title(video_id)
-            if video_title:
-                st.info(f"Downloading **{video_title}** as MP3. Please wait...")
+            # Fetch conversion link
+            download_link = get_conversion_link(video_id)
+            if download_link:
+                st.success(f"Download the MP3 from the link below:")
+                st.markdown(f"[Download MP3]({download_link})")
             else:
-                st.warning("Unable to fetch video title. Proceeding with download...")
-
-            # Download the audio file
-            file_name, error_message = download_audio(video_id)
-            if file_name:
-                st.success(f"Download successful! File saved as {file_name}.")
-                with open(file_name, "rb") as audio_file:
-                    st.download_button(
-                        label="Download MP3",
-                        data=audio_file,
-                        file_name=file_name,
-                        mime="audio/mpeg",
-                    )
-            else:
-                st.error(error_message)
+                st.error("Error: Could not get conversion link.")
         else:
             st.error("Invalid YouTube URL. Please enter a valid URL.")
     else:
         st.warning("Please enter a YouTube URL.")
 
-# Optional: Reset the app
+# Optional: "Reset Conversion" button to clear fields
 if st.button("Reset Conversion"):
-    st.experimental_rerun()
+    st.experimental_rerun()  # Refresh the app to reset the URL input
