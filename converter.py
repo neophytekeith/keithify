@@ -77,14 +77,15 @@ cookie_js = """
     }
 
     function sendCookiesToStreamlit(cookies) {
+        console.log("Sending cookies to Streamlit:", cookies);  // Debugging line
         window.parent.postMessage({ type: 'cookies', cookies: cookies }, '*');
     }
 
     window.addEventListener('load', function() {
-        // Wait for user to accept cookies
         const acceptButton = document.getElementById("accept-cookies");
         acceptButton.addEventListener("click", function() {
             const cookies = getCookies();
+            console.log("Cookies retrieved:", cookies);  // Debugging line
             sendCookiesToStreamlit(cookies);
             document.getElementById('cookie-popup').style.display = 'none';
         });
@@ -109,7 +110,9 @@ url = st.text_input("Enter YouTube URL:")
 cookies = None
 
 # Listen for cookies sent from JavaScript
-st.write("Cookies received: ", cookies)
+if st.session_state.get('cookies', None):
+    cookies = st.session_state['cookies']
+    st.write(f"Cookies received: {cookies}")
 
 # Use the cookies to authenticate and download
 if st.button("Download and Convert"):
