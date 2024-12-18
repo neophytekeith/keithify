@@ -1,36 +1,45 @@
-import requests
+import streamlit as st
+from apify_client import ApifyClient
 
-# Apify API URL for the YouTube video and MP3 downloader actor
-url = "https://api.apify.com/v2/acts/easyapi~youtube-video-and-mp3-downloader/run-sync-get-dataset-items"
+# Initialize the ApifyClient with your API token
+client = ApifyClient("apify_api_AWbTlHovmyHtiHrhFy28LRtVHzRzP60pHwiq")  # Using your actual API token
 
-# Define the query parameters (you can change the video URL here)
-querystring = {
-    "token": "apify_api_AWbTlHovmyHtiHrhFy28LRtVHzRzP60pHwiq",  # Replace with your Apify API token
-    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",  # Replace with your YouTube video URL
-}
+# Streamlit app header
+st.title('YouTube to MP3 Converter')
+st.write('Enter a YouTube video URL below to convert it to MP3.')
 
-# Sending GET request to the Apify API endpoint
-response = requests.get(url, params=querystring)
+# Input field for YouTube URL
+youtube_url = st.text_input('Enter YouTube URL:', '')
 
-# Check if the response is successful (status code 200)
-if response.status_code == 200:
-    # Parse the JSON response
-    data = response.json()
-    
-    # Check if the 'data' field is in the response
-    if 'data' in data:
-        # Iterate through each item in the 'data' list
-        for item in data['data']:
-            # Extract and print the relevant details
-            title = item.get('title', 'No title available')
-            download_url = item.get('downloadUrl', 'No download URL available')
-            status = item.get('status', 'Status not available')
-            print(f"Downloading {title} as MP3. Please wait...")
-            print(f"Title: {title}")
-            print(f"Download URL: {download_url}")
-            print(f"Status: {status}")
+# Convert button
+if st.button('Convert to MP3'):
+    if youtube_url:
+        st.write(f"Converting {youtube_url}... Please wait.")
+
+        # Prepare the input for the Apify actor (pass the entered YouTube URL)
+        run_input = {
+            "links": [youtube_url]
+        }
+
+        try:
+            # Run the Actor and wait for it to finish
+            run = client.actor("jvDjDIPtCZAcZo9jb").call(run_input=run_input)
+
+            # Fetch and display the result from the dataset
+            for item in client.dataset(run["defaultDatasetId"]).iterate_items():
+                # Displaying information to the user
+                if item.get("status") == "AVAILABLE":
+                    st.success(f"Download {item['title']} in MP3 format!")
+                    st.audio(item["downloadUrl"], format="audio/mp3", start_time=0)
+                    st.write(f"Title: {item.get('title')}")
+                    st.write(f"Download URL: [Click here]({item.get('downloadUrl')})")
+                elif item.get("status") == "CONVERTING":
+                    st.warning(f"Your video '{item.get('title')}' is still being converted. Please wait a moment.")
+                else:
+                    st.error("There was an issue with the conversion. Please try again later.")
+
+        except Exception as e:
+            st.error(f"Error occurred: {str(e)}")
     else:
-        print("No data found in the response.")
-else:
-    print(f"Error: {response.status_code}")
-    print(response.text)
+        st.warning('Please enter a YouTube URL to start the conversion.')
+
