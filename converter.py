@@ -2,10 +2,6 @@ import os
 import yt_dlp
 import streamlit as st
 import subprocess
-from streamlit_cookies_manager import CookiesManager
-
-# Initialize cookie manager
-cookies = CookiesManager()
 
 # Set up the download directory
 download_dir = "/tmp"
@@ -69,8 +65,8 @@ def download_and_convert_to_mp3(url):
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
-# Check if the user has already consented to cookies
-if not cookies.get('cookie_consent'):
+# Check if the user has already consented to cookies using Streamlit session state
+if 'cookie_consent' not in st.session_state:
     # Display cookie consent message
     st.markdown("""
         <div style="background-color: #f1f1f1; padding: 10px; border-radius: 5px; text-align: center;">
@@ -78,13 +74,12 @@ if not cookies.get('cookie_consent'):
             <br><br>
             By clicking "Accept", you agree to our use of cookies. 
             <br><br>
-            <button onclick="window.location.href='/';">Accept</button>
         </div>
         """, unsafe_allow_html=True)
 
     # Button to accept cookies
     if st.button("Accept Cookies"):
-        cookies.set('cookie_consent', 'accepted')  # Store the consent in cookies
+        st.session_state.cookie_consent = True  # Store the consent in session state
         st.write("Thank you for accepting the cookies!")
 else:
     # Content to display after the user accepts cookies
