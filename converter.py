@@ -1,70 +1,37 @@
-import streamlit as st
 import requests
-import re
 
-# Set your API key and host URL
-API_KEY = "d90a09a015msh12f69eb58ce9364p149b89jsnd92118bd82d3"  # Replace with your actual RapidAPI key
-API_HOST = "youtube-mp36.p.rapidapi.com"
+# URL of the API that provides the audio file
+url = "https://youtube-mp3-audio-video-downloader.p.rapidapi.com/download-m4a/R1F7nAomdn8"
 
-# Function to extract YouTube video ID from the URL
-def extract_video_id(url):
-    # Try to match either of the common YouTube URL formats
-    video_id = None
-    if "youtu.be" in url:
-        video_id = re.search(r"youtu\.be/([a-zA-Z0-9_-]+)", url)
-    elif "youtube.com" in url:
-        video_id = re.search(r"[?&]v=([a-zA0-9_-]+)", url)
-    return video_id.group(1) if video_id else None
+headers = {
+    "x-rapidapi-key": "3d094d7278msh8e5073db331294cp165831jsn1adf94629802",
+    "x-rapidapi-host": "youtube-mp3-audio-video-downloader.p.rapidapi.com"
+}
 
-# Function to convert video to MP3 using external API
-def convert_to_mp3(video_url):
-    video_id = extract_video_id(video_url)
-    
-    if not video_id:
-        return None, "Invalid YouTube URL."
+# Send the request to the API
+response = requests.get(url, headers=headers)
 
-    api_url = "https://youtube-mp36.p.rapidapi.com/dl"
-    querystring = {"id": video_id}
-    headers = {
-        "x-rapidapi-key": API_KEY,
-        "x-rapidapi-host": API_HOST,
-        "accept": "application/json"
-    }
+# Check if the request was successful (HTTP status code 200)
+if response.status_code == 200:
+    data = response.json()
 
-    try:
-        response = requests.get(api_url, headers=headers, params=querystring)
-        
-        if response.status_code == 200:
-            data = response.json()
-            # Check if the response status is 'ok'
-            if data.get("status") == "ok":
-                return data.get("title"), data.get("link")
-            else:
-                return None, data.get("msg", "Unknown error occurred.")
+    # If the API returned a valid status and a file URL
+    if data.get("status") == "success":
+        file_url = data.get("link")  # The URL to the audio file
+        file_name = "downloaded_audio.mp3"  # You can change the name and extension to .mp3 if needed
+
+        # Download the file from the URL
+        file_response = requests.get(file_url)
+
+        # If the file was successfully downloaded
+        if file_response.status_code == 200:
+            # Open the file in binary write mode and save it
+            with open(file_name, 'wb') as f:
+                f.write(file_response.content)
+            print(f"Audio file saved as {file_name}")
         else:
-            return None, f"HTTP Error: {response.status_code}"
-        
-    except Exception as e:
-        return None, f"Error occurred: {e}"
-
-# Streamlit UI to input YouTube URL and start the process
-st.title("YouTube to MP3 Converter")
-
-url = st.text_input("Enter YouTube URL:")
-
-if st.button("Convert to MP3"):
-    if url:
-        # Call the external API to convert video to MP3
-        song_title, download_link = convert_to_mp3(url)
-        if song_title:
-            st.success(f"Conversion successful! You can download the MP3 below.")
-            st.write(f"Song Title: {song_title}")
-            st.markdown(f"[Download MP3]({download_link})")
-        else:
-            st.error(f"Error: {download_link}")
+            print(f"Failed to download the file. Status code: {file_response.status_code}")
     else:
-        st.warning("Please enter a valid YouTube URL.")
-
-# Optional: "Reset Conversion" button to clear fields
-if st.button("Reset Conversion"):
-    st.experimental_rerun()  # Refresh the app to reset the URL input
+        print(f"Error: {data.get('msg')}")
+else:
+    print(f"HTTP Error: {response.status_code}")
