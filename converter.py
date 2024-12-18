@@ -18,7 +18,7 @@ if response.status_code == 200:
     # If the API returned a valid status and a file URL
     if data.get("status") == "success":
         file_url = data.get("link")  # The URL to the audio file
-        file_name = "downloaded_audio.mp3"  # You can change the name and extension to .mp3 if needed
+        file_name = "downloaded_audio.m4a"  # You can change the name and extension to .mp3 if needed
 
         # Download the file from the URL
         file_response = requests.get(file_url)
