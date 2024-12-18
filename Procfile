@@ -1,1 +1,1 @@
-web: streamlit run app.py --server.port=$PORT
+web: streamlit run converter.py --server.port=$PORT
