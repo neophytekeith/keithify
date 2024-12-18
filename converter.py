@@ -1,6 +1,5 @@
 import streamlit as st
-import http.client
-import json
+import requests
 import re
 
 # Set your API key and host URL
@@ -17,45 +16,29 @@ def extract_video_id(url):
         video_id = re.search(r"[?&]v=([a-zA-Z0-9_-]+)", url)
     return video_id.group(1) if video_id else None
 
-# Function to convert video to MP3 using the external API (via custom HTTP client)
+# Function to convert video to MP3 using external API
 def convert_to_mp3(video_url):
-    # Encoding the URL
-    encoded_url = video_url.replace("https://", "%3A%2F%2F").replace("/", "%2F").replace("?", "%3F").replace("=", "%3D").replace("&", "%26")
-    
-    # Setting up the connection to the RapidAPI
-    conn = http.client.HTTPSConnection(API_HOST)
+    api_url = f"https://youtube-mp3-download3.p.rapidapi.com/downloads/convert_audio"
     headers = {
-        'x-rapidapi-key': API_KEY,
-        'x-rapidapi-host': API_HOST
+        "x-rapidapi-key": API_KEY,
+        "x-rapidapi-host": API_HOST
     }
-
-    # Constructing the API request URL
-    request_url = f"/downloads/convert_audio?url={encoded_url}&format=mp3"
-
-    # Sending GET request to the API
-    conn.request("GET", request_url, headers=headers)
-
-    # Getting the response
-    res = conn.getresponse()
-
-    # Check if the request was successful
-    if res.status == 200:
-        # Reading and decoding the response data
-        data = res.read()
-        response = json.loads(data.decode("utf-8"))  # Parse JSON response
-
-        # Checking the response status
-        if response.get('status') == 'ok':
-            song_title = response.get('title')
-            download_link = response.get('link')
-            conn.close()  # Close the connection
-            return song_title, download_link
+    params = {
+        'url': video_url,
+        'format': 'mp3'
+    }
+    try:
+        response = requests.get(api_url, headers=headers, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('status') == "ok":
+                return data['title'], data['link']
+            else:
+                return None, data.get('msg', 'Unknown error occurred.')
         else:
-            conn.close()
-            return None, response.get('msg', 'Unknown error occurred')
-    else:
-        conn.close()
-        return None, f"Error: Failed to fetch data. HTTP Status Code: {res.status}"
+            return None, f"HTTP Error: {response.status_code}"
+    except Exception as e:
+        return None, f"Error: {str(e)}"
 
 # Streamlit UI to input YouTube URL and start the process
 st.title("YouTube to MP3 Converter")
