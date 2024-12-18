@@ -52,4 +52,5 @@ watchdog==6.0.0
 yt-dlp
 streamlit-cookies-manager
 requests
+apify-client
 
