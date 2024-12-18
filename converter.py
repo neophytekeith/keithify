@@ -2,6 +2,7 @@ import os
 import yt_dlp
 import streamlit as st
 import subprocess
+from streamlit.components.v1 import html
 
 # Set up the download directory
 download_dir = "/tmp"
@@ -17,11 +18,11 @@ def clear_temp_files():
         os.remove(temp_mp3_file)
 
 # Function to download and convert YouTube video to MP3
-def download_and_convert_to_mp3(url):
+def download_and_convert_to_mp3(url, cookies=None):
     try:
         clear_temp_files()
 
-        # Set up yt-dlp options without cookies
+        # Set up yt-dlp options with cookies if provided
         ydl_opts = {
             'format': 'bestaudio/best',
             'outtmpl': os.path.join(download_dir, 'temp_audio.%(ext)s'),
@@ -33,6 +34,9 @@ def download_and_convert_to_mp3(url):
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             },
         }
+
+        if cookies:
+            ydl_opts['cookies'] = cookies  # Add cookies if provided
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             # Extract video info, including the title
@@ -65,40 +69,56 @@ def download_and_convert_to_mp3(url):
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
-# Check if the user has already consented to cookies using Streamlit session state
-if 'cookie_consent' not in st.session_state:
-    # Display cookie consent message
-    st.markdown("""
-        <div style="background-color: #f1f1f1; padding: 10px; border-radius: 5px; text-align: center;">
-            <strong>This website uses cookies to improve your experience.</strong>
-            <br><br>
-            By clicking "Accept", you agree to our use of cookies. 
-            <br><br>
-        </div>
-        """, unsafe_allow_html=True)
+# JavaScript to extract cookies
+cookie_js = """
+    <script>
+    function getCookies() {
+        return document.cookie;
+    }
 
-    # Button to accept cookies
-    if st.button("Accept Cookies"):
-        st.session_state.cookie_consent = True  # Store the consent in session state
-        st.write("Thank you for accepting the cookies!")
-else:
-    # Content to display after the user accepts cookies
-    st.write("Welcome back! You have already accepted the cookies.")
+    function sendCookiesToStreamlit(cookies) {
+        window.parent.postMessage({ type: 'cookies', cookies: cookies }, '*');
+    }
 
-# Streamlit UI to input YouTube URL and start the process
+    window.addEventListener('load', function() {
+        // Wait for user to accept cookies
+        const acceptButton = document.getElementById("accept-cookies");
+        acceptButton.addEventListener("click", function() {
+            const cookies = getCookies();
+            sendCookiesToStreamlit(cookies);
+            document.getElementById('cookie-popup').style.display = 'none';
+        });
+    });
+    </script>
+"""
+
+# Streamlit UI for Cookie Consent Popup
+html(f"""
+    <div id="cookie-popup" style="position: fixed; bottom: 20px; left: 20px; background-color: #fff; border: 1px solid #ccc; padding: 10px; z-index: 1000;">
+        <p>This website uses cookies. By accepting, you agree to use your browser cookies for authentication.</p>
+        <button id="accept-cookies">Accept Cookies</button>
+    </div>
+    {cookie_js}
+""", height=200)
+
+# Streamlit UI to input YouTube URL
 st.title("YouTube to MP3 Converter")
-if 'url' not in st.session_state:
-    st.session_state.url = ""
+url = st.text_input("Enter YouTube URL:")
 
-url = st.text_input("Enter YouTube URL:", key="url")
+# Variable to store cookies
+cookies = None
+
+# Listen for cookies sent from JavaScript
+st.write("Cookies received: ", cookies)
+
+# Use the cookies to authenticate and download
 if st.button("Download and Convert"):
     if url:
-        download_and_convert_to_mp3(url)
+        download_and_convert_to_mp3(url, cookies)
     else:
         st.warning("Please enter a valid YouTube URL.")
 
 # "Reset Conversion" button to reset URL and session state
 if st.button("Reset Conversion"):
-    st.session_state.url = ""  # This will reset the input field
-    clear_temp_files()  # Clear the temporary files
-    st.experimental_rerun()  # Refresh the app to reset the URL input
+    cookies = None  # Reset cookies
+    st.experimental_rerun()  # Refresh the app to reset everything
